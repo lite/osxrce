@@ -1,0 +1,805 @@
+<html>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html;CHARSET=iso-8859-1">
+
+<head>
+<title>GDB reference card</title>
+</head>
+
+<body bgcolor="#000000"  text="#EEEEEE" link="#00FFFF" vlink="#00FFFF" alink="#FF6600">
+
+<a href="http://www.gnu.org/software/gdb/documentation/">GDB user manual</a>
+<p>
+<a href="http://sourceware.org/gdb/current/onlinedocs/gdbint/">GDB internals documentation</a>
+<p>
+A useful GDB initilization script <a href="http://reverse.put.as/wp-content/uploads/2008/11/gdbinit"><tt>.gdbinit</tt></a>
+(a local copy <a href="code/gdbinit">here</a>) Detailed explanation <a href="http://www.ibm.com/developerworks/aix/library/au-gdb.html">here</a>
+
+<h3>Hacking GDB</h3>
+To see how a function in GDB is implemented, seek calls to
+the following functions in GDB source tree:
+<pre>
+add_com
+add_com_alias
+add_info
+add_info_alias
+</pre>
+where <tt>add_info</tt> add a hook to the implementation of commands beginning with <tt>info</tt>.
+<p>
+For example, <tt>info functions</tt> command is added in function <tt>_initialize_symtab</tt>
+<a href="http://sourceware.org/git/?p=gdb.git;a=blob_plain;f=gdb/symtab.c"><tt>gdb/symtab.c</tt></a>
+as
+<pre>
+  add_info ("functions", functions_info,
+        _("All function names, or those matching REGEXP."));
+</pre>
+so the actual implementation is <tt>functions_info</tt>
+<p>
+<h3>Invoking GDB</h3>
+<table border>
+ <tr>
+  <td> gdb <i>program</i> </td> <td></td>
+ </tr>
+
+ <tr>
+  <td> gdb <i>program</i> -c <i>core</i> </td><td>Debug a program with <i>core</i> file<td></td>
+ </tr>
+
+ <tr>
+  <td> gdb -p <i>pid</i> </td><td>Debug a running process whose ID is <i>pid</i><td></td>
+ </tr>
+
+ <tr>
+  <td> gdb --args <i>program</i> <i>arg1</i> <i>arg2</i> </td> <td>Debug <i>program</i> and pass <i>arg1</i> <i>arg2</i> to <i>program</i> </td>
+ </tr>
+
+</table>
+
+<p>
+<h3>Running debuggee ("inferior" in GDB parlance) and set up its environments</h3>
+
+<table border>
+
+ <tr>
+  <td>r &gt; <i>outputfile</i> </td>
+  <td>Run the debuggee and redirect all console output to <i>outputfile</i> </td>
+ </tr>
+
+ <tr>
+  <td>start</td>
+  <td>Run the debuggee and stop at <tt>main</tt> </td>
+ </tr>
+
+ <tr>
+  <td>kill </td>
+  <td>Kill the debuggee. Use "r" again to restart the debuggee.</td>
+ </tr>
+
+ <tr>
+  <td>set args <i>arg1</i> <i>arg2</i> </td>
+  <td>Set the command-line arguments <i>arg1</i> <i>arg2</i> for debuggee</td>
+ </tr>
+
+ <tr>
+  <td>show args</td>
+  <td></td>
+ </tr>
+
+ <tr>
+  <td>set env <i>varname=value</i> </td>
+  <td>Set the environment <i>varname=value</i> for debuggee</td>
+ </tr>
+
+ <tr>
+  <td>unset env <i>varname</i> </td>
+  <td>Remove the environment variable <i>varname</i> </td>
+ </tr>
+
+ <tr>
+  <td>set exec-wrapper env 'LD_PRELOAD=<i>libfoo.so</i>'</td>
+  <td>Run the debuggee with wrapper program env and use 'LD_PRELOAD=<i>libfoo.so</i>' as env's  command-line argument </td>
+ </tr>
+
+ <tr>
+  <td>show env</td>
+  <td></td>
+ </tr>
+
+ <tr>
+  <td>attach <i>pid</i></td>
+  <td>Attach to the running process <i>pid</i></td>
+ </tr>
+
+ <tr>
+  <td>info threads</td>
+  <td>List threads</td>
+ </tr>
+
+ <tr>
+  <td>thread <i>threadID</i></td>
+  <td>Switch to thread <i>threadID</i></td>
+ </tr>
+
+ <tr>
+  <td>set non-stop on</td>
+  <td>When one thread stops, GDB will not stop other threads.</td>
+ </tr>
+
+ <tr>
+  <td><a href="http://sourceware.org/gdb/onlinedocs/gdb/All_002dStop-Mode.html">set scheduler-locking</a> on</td>
+  <td>Only the current thread may run when the debuggee is resumed.</td>
+ </tr>
+
+ <tr>
+  <td>set scheduler-locking step</td>
+  <td>In the single-step mode, only the current thread may run.</td>
+ </tr>
+
+
+ <tr>
+  <td>info inferiors</td>
+  <td>List processes</td>
+ </tr>
+
+ <tr>
+  <td>shell <i>command string</i></td>
+  <td>Invoke a standard shell to execute <i>command string</i></td>
+ </tr>
+</table>
+
+<p>
+<h3><a href="http://sourceware.org/gdb/onlinedocs/gdb/Set-Breaks.html">Break points</a>,
+    <a href="http://sourceware.org/gdb/onlinedocs/gdb/Set-Watchpoints.html">watch points</a>, single-step execution</h3>
+<p>
+One should set the environmental variable <font color="lightgreen"><tt>LD_BIND_NOW</tt> to 1</font> if
+one wants to set a break point in a function in a dynamic link library.
+<p>
+<table border>
+ <tr>
+  <td>set breakpoint pending on</td>
+  <td>When setting a break point on a not-yet-loaded dynamic library, this will automatically create a pending break point WITHOUT asking.</td>
+ </tr>
+
+ <tr>
+  <td>b <i>function</i></td>
+  <td>Set a break point at first line of <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>tbreak <i>function</i></td>
+  <td>Set <i>one-time</i> break point at first line of <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>b <i>num</i></td>
+  <td>Set a break point at line number <i>num</i></td>
+ </tr>
+
+ <tr>
+  <td>b *0x12345</td>
+  <td>Set a break point at address 0x12345</td>
+ </tr>
+
+ <tr>
+  <td>b *<i>function</i></td>
+  <td>Set a break point at actual starting address of <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>b *0x12345 if <i>foo==5</i></td>
+  <td>Stop at address 0x12345 if <i>foo==5</i>
+    <p>See <a href="http://sourceware.org/gdb/onlinedocs/gdb/Conditions.html">here</a>
+        for more details on conditional break points.
+  </td>
+ </tr>
+
+ <tr>
+  <td>watch <i>foo</i></td>
+  <td>Stop if the variable <i>foo</i> changed.
+    <p>The number of watch points is limited (depending on hardware). On x86, only 4 hardware watch points can be set simultaneously.</td>
+ </tr>
+
+ <tr>
+  <td>set can-use-hw-watchpoint 0</td>
+  <td>Do not use hardware watch points.</td>
+ </tr>
+
+ <tr>
+  <td>watch *0x12345</td>
+  <td>Stop if the value at address 0x12345 changed</td>
+ </tr>
+
+ <tr>
+  <td>rwatch <i>foo</i></td>
+  <td>Stop if the variable <i>foo</i> is read. <p>This feature is hardware dependent.
+  </td>
+ </tr>
+
+ <tr>
+  <td>awatch <i>foo</i></td>
+  <td>Stop if the variable <i>foo</i> is read or written. <p>This feature is hardware dependent.
+  </td>
+ </tr>
+
+ <tr>
+  <td>catch syscall</td>
+  <td>Stop when a system call occurs.</td>
+ </tr>
+
+ <tr>
+  <td>catch syscall [<i>name</i>| <i>number</i>]</td>
+  <td>Stop when a specified system call occurs.</td>
+ </tr>
+
+ <tr>
+  <td>catch throw</td>
+  <td>Stop when a C++ exception is thrown.</td>
+ </tr>
+
+ <tr>
+  <td>handle <i>signal</i> stop<br>handle <i>signal</i> nostop<br>handle <i>signal</i> print</td>
+  <td><a href="http://sourceware.org/gdb/onlinedocs/gdb/Signals.html">Signal handling</a>.</td>
+ </tr>
+
+ <tr>
+  <td>
+    <pre>
+b <i>function</i> if <i>foo==5</i>
+commands
+  silent
+  printf "x is %d\n",x
+  c
+end
+    </pre>
+  </td>
+  <td>Execute the commands "silent", "print...", and "c" after reaching the break point at <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>info break</td>
+  <td>List all break/watch points</td>
+ </tr>
+
+ <tr>
+  <td>clear</td>
+  <td>Remove all break/watch points</td>
+ </tr>
+
+ <tr>
+  <td>clear <i>function</i></td>
+  <td>Remove the break point at <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>disable <i>num</i></td>
+  <td>Disable the break point <i>num</i> (use "info break" first to get a list of break/watch points)</td>
+ </tr>
+
+ <tr>
+  <td>c</td>
+  <td>Continue execution after reaching a break point</td>
+ </tr>
+
+ <tr>
+  <td>rc</td>
+  <td>Reverse execution until reaching a break point</td>
+ </tr>
+
+ <tr>
+  <td>finish</td>
+  <td>Continue execution until the current function returns</td>
+ </tr>
+
+ <tr>
+  <td>return 1</td>
+  <td>Return from current function immediately with value 1</td>
+ </tr>
+
+ <tr>
+  <td>s</td>
+  <td>Execute one line of source code</td>
+ </tr>
+
+ <tr>
+  <td>n</td>
+  <td>Same as above, but don't jump into function calls</td>
+ </tr>
+
+ <tr>
+  <td>si</td>
+  <td>Execute one machine instruction</td>
+ </tr>
+
+ <tr>
+  <td>ni</td>
+  <td>Same as above, but don't jump into function calls</td>
+ </tr>
+
+ <tr>
+  <td>reverse-step</td>
+  <td>Reverse execute one line of source code.
+    <p>See <a href="http://www.sourceware.org/gdb/wiki/ProcessRecord/Tutorial">here</a> for a tutorial.
+  </td>
+ </tr>
+
+ <tr>
+  <td>reverse-next</td>
+  <td>Same as above, but don't jump into function calls</td>
+ </tr>
+
+ <tr>
+  <td>reverse-stepi</td>
+  <td>Reverse execute one machine instruction</td>
+ </tr>
+
+ <tr>
+  <td>reverse-nexti</td>
+  <td>Same as above, but don't jump into function calls</td>
+ </tr>
+
+ <tr>
+  <td>checkpoint</td>
+  <td>Save a snapshot of debuggee's state</td>
+ </tr>
+
+ <tr>
+  <td>restart <i>checkpoint_id</i></td>
+  <td>Restore the debuggee's state to <i>checkpoint_id</i></td>
+ </tr>
+
+ <tr>
+  <td>delete checkpoint <i>checkpoint_id</i></td>
+  <td>Delete <i>checkpoint_id</i></td>
+ </tr>
+
+ <tr>
+  <td>info checkpoints</td>
+  <td>Show all checkpoints</td>
+ </tr>
+
+ <tr>
+  <td>(Record and replay the execution)</td>
+  <td>See <a href="http://sourceware.org/gdb/current/onlinedocs/gdb/Process-Record-and-Replay.html">here</a> for details
+    and <a href="http://www.sourceware.org/gdb/wiki/ProcessRecord/Tutorial">here</a> for a tutorial.</td>
+ </tr>
+
+</table>
+
+<p>
+<h3>Examining the stack</h3>
+<table border>
+ <tr>
+  <td>bt</td>
+  <td>Print a backtrace (list of stack frames)</td>
+ </tr>
+
+ <tr>
+  <td>f <i>num</i></td>
+  <td>Select frame number <i>num</u></td>
+ </tr>
+
+ <tr>
+  <td>down <i>num</i></td>
+  <td>Move down <i>num</i> frames (most recent ones)</td>
+ </tr>
+
+ <tr>
+  <td>info f</i></td>
+  <td>Print info about the frame</td>
+ </tr>
+
+ <tr>
+  <td>info args</i></td>
+  <td>Print arguments passed to the frame</td>
+ </tr>
+
+ <tr>
+  <td>info local</i></td>
+  <td>Print local variables of the frame</td>
+ </tr>
+</table>
+
+<p>
+<h3><a href="http://sourceware.org/gdb/onlinedocs/gdb/Machine-Code.html">Examining source files and machine code</a></h3>
+<table border>
+ <tr>
+  <td>list <i>function</i></td>
+  <td>Show source code of <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>list <i>filename:function</i></td>
+  <td>Show source code of <i>function</i> in file <i>filename</i></td>
+ </tr>
+
+ <tr>
+  <td>list *0x12345</td>
+  <td>Show source code at address 0x12345</td>
+ </tr>
+
+ <tr>
+  <td>info line <i>function</i></td>
+  <td>Show the starting and ending address of the machine code for <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>disas <i>function</i></td>
+  <td>Disassemble <i>function</i></td>
+ </tr>
+
+ <tr>
+  <td>set disassembly-flavor intel<br>set disassembly-flavor att</td>
+  <td>Use specified syntax for disassmbly</td>
+ </tr>
+
+ <tr>
+  <td>disas/m <i>function</i></td>
+  <td>Disassemble <i>function</i> and show the source code side-by-side (the debuggee must be compiled with <tt>-g</tt> option)</td>
+ </tr>
+
+ <tr>
+  <td>disas/r <i>function</i></td>
+  <td>Disassemble <i>function</i> and show the  raw instructions in hexadecimals</td>
+ </tr>
+
+ <tr>
+  <td>set disassemble-next-line on</td>
+  <td>Disassemble the next instruction whenever GDB stops</td>
+ </tr>
+
+ <tr>
+  <td>set print asm-demangle on </td>
+  <td>Show demangled symbol names in disassembly</td>
+ </tr>
+
+ <tr>
+  <td>
+<pre>
+define hook-stop
+x/i $pc
+end
+</pre></td>
+  <td>Disassemble the next instruction whenever GDB stops.<p>This is a special example
+    of <a href="http://sourceware.org/gdb/current/onlinedocs/gdb/Hooks.html">user-defined hooks</a>.</td>
+ </tr>
+
+ <tr>
+  <td>x/4i 0x12345</td>
+  <td>Show the machine code for the first 4 instructions starting at address 0x12345</td>
+ </tr>
+
+ <tr>
+  <td>x/4i $pc-6</td>
+  <td>Show the machine code of 4 instructions starting at current program counter minus 6</td>
+ </tr>
+
+</table>
+
+<p>
+<h3>Examining data, memory, registers</h3>
+<table border>
+ <tr>
+  <td>p <i>var</i></td>
+  <td>Print the value of <i>var</i>.<p><i>var</i> can be a register, e.g. <i>$r1</i> </td>
+ </tr>
+
+ <tr>
+  <td>whatis <i>var</i></td>
+  <td>Print the data type of <i>var</i>. </td>
+ </tr>
+
+ <tr>
+  <td>ptype <i>foo</i></td>
+  <td>Print the data type of symbol <i>foo</i> </td>
+ </tr>
+
+ <tr>
+  <td>p/t <i>var</i></td>
+  <td>Print the value of <i>var</i> in binary</td>
+ </tr>
+
+ <tr>
+  <td>p/<i>c</i> <i>var</i></td>
+  <td>Print the value of <i>var</i> in format <i>c</i>:<br>
+    x=hexadecimal, c=char, t=binary, d=signed, u=unsigned, o=octal, a=address, f=floating</td>
+ </tr>
+
+ <tr>
+  <td>p <i>function::var</i></td>
+  <td>Print the value of <i>var</i> in <i>function</i></td>
+ </tr>
+
+ <tr>
+   <td>p *<i>array</i>@<i>len</i></td>
+   <td>Print the values of <i>array</i> (allocated by malloc) with length <i>len</i></td>
+ </tr>
+
+ <tr>
+   <td>call getpid()</td>
+   <td>Print the PID of current process</td>
+ </tr>
+
+ <tr>
+  <td>info inferiors</td>
+  <td>List processes</td>
+ </tr>
+
+ <tr>
+  <td>x &<i>var</i></td>
+  <td>Print the address of <i>var</i>.</td>
+ </tr>
+
+ <tr>
+  <td>info address <i>foo</i></td>
+  <td>Print the address of symbol <i>foo</i>.</td>
+ </tr>
+
+ <tr>
+  <td>info symbol 0x12345</td>
+  <td>Print the name of the symbol which is stored at 0x12345</td>
+ </tr>
+
+ <tr>
+  <td>info macro <i>foo</i></td>
+  <td>Print the definition of macro <i>foo</i>.<p>The debuggee must be compiled with <tt>-ggdb3</tt> flag.</td>
+ </tr>
+
+ <tr>
+  <td><a href="http://sourceware.org/gdb/onlinedocs/gdb/Macros.html">macro expand</a> <i>foo</i></td>
+  <td>Expand the definition of macro <i>foo</i>.<p>The debuggee must be compiled with <tt>-ggdb3</tt> flag.</td>
+ </tr>
+
+ <tr>
+  <td>x/1s 0x12345</td>
+  <td>Print 1 null-terminated string starting at 0x12345 </td>
+ </tr>
+
+ <tr>
+  <td>x/5xb 0x12345</td>
+  <td>Print 5 bytes of memory in hexadecimal starting at 0x12345 </td>
+ </tr>
+
+ <tr>
+  <td>x/<i>nfu</i> 0x12345</td>
+  <td><i>n</i> is repeat count<br>
+      <i>f</i> is format (i=instruction, s=string, x=hexadecimal, c=char, t=binary, d=signed, u=unsigned, o=octal, a=address, f=floating)<br>
+      <i>u</i> is unit (b=byte, h=2 bytes, w=4 bytes, g=8 bytes)
+  </td>
+ </tr>
+
+ <tr>
+  <td>info registers<br>info float<br>info vector<br>info all-registers<br></td>
+  <td>List regular/floating-point/vector/all registers</td>
+ </tr>
+
+ <tr>
+  <td>p/x $pc</td>
+  <td>Print the program counter</td>
+ </tr>
+
+ <tr>
+  <td>display <i>var</i></td>
+  <td><a href="http://sourceware.org/gdb/onlinedocs/gdb/Auto-Display.html">Automatically display</a> <i>var</i> each time GDB stops.
+  </td>
+ </tr>
+
+ <tr>
+  <td>
+<pre>
+define hook-stop
+print <i>var</i>
+end
+</pre></td>
+  <td>Display</a> <i>var</i> each time GDB stops.<p>This is a special example
+    of <a href="http://sourceware.org/gdb/current/onlinedocs/gdb/Hooks.html">user-defined hooks</a>.</td>
+ </tr>
+
+ <tr>
+  <td>display/<i>nfu</i> 0x12345</td>
+  <td>Display address 0x12345 (with format <i>nfu</i>) each time GDB stops.</td>
+ </tr>
+
+ <tr>
+  <td>info display</td>
+  <td>List all <a href="http://sourceware.org/gdb/onlinedocs/gdb/Auto-Display.html">automatic displays</a></td>
+ </tr>
+
+ <tr>
+  <td>undisplay <i>num</i></td>
+  <td>Remove display <i>num</i></td>
+ </tr>
+
+ <tr>
+  <td>find <i>start_addr</i>, +<i>len</i>, <i>val1</i> [, <i>val2</i>, ...]</td>
+  <td><a href="http://sourceware.org/gdb/onlinedocs/gdb/Searching-Memory.html">Search memory</a> </td>
+ </tr>
+
+ <tr>
+  <td>heap</td>
+  <td>Show heap usage and classify heap objects<p>This is a Fedora extension for GDB.
+    See <a href="http://fedoraproject.org/wiki/Features/MemoryDebuggingTools#User_Experience">here</a>
+    and <a href="http://fedorahosted.org/gdb-heap/">here</a>
+    for details.
+  </td>
+ </tr>
+
+</table>
+
+<p>
+<h3>Changing data, memory, registers, execution</h3>
+<table border>
+ <tr>
+  <td>set var <i>foo</i>+=5</td>
+  <td>Set the value of variable <i>foo</i> to increment by 5</td>
+ </tr>
+
+ <tr>
+  <td>set {int}0x12345=6</td>
+  <td>Set the value of at address 0x12345 to be 6 (treat as an integer)</td>
+ </tr>
+
+ <tr>
+  <td>set $rax=$rbx+5</td>
+  <td>Set the value of x86_64 register RAX to be the sum of 5 and register RBX</td>
+ </tr>
+
+ <tr>
+  <td>set $ps=$ps|1<p>set $ps=$ps&~1</td>
+  <td>Set/Clean the Carry flag (x86)</td>
+ </tr>
+
+ <tr>
+  <td>set $ps=$ps|0x4</td>
+  <td>Set the <a href="http://en.wikipedia.org/wiki/Parity_flag">Parity flag</a> (x86)</td>
+ </tr>
+
+ <tr>
+  <td>set $ps=$ps|0x40</td>
+  <td>Set the Zero flag (x86)</td>
+ </tr>
+
+ <tr>
+  <td>set $ps=$ps|0x80</td>
+  <td>Set the Sign flag (x86)</td>
+ </tr>
+
+ <tr>
+  <td>set $ps=$ps|0x800</td>
+  <td>Set the Overflow flag (x86)</td>
+ </tr>
+
+ <tr>
+  <td>set write on</td>
+  <td>Make text region writeable</td>
+ </tr>
+
+ <tr>
+  <td>signal SIGSEGV</td>
+  <td>Send the signal SIGSEGV to debuggee</td>
+ </tr>
+
+ <tr>
+  <td>generate-core-file</td>
+  <td>Create a core dump file</td>
+ </tr>
+
+</table>
+
+<p>
+<h3><a href="http://sourceware.org/gdb/onlinedocs/gdb/Symbols.html">Examining the symbol table</a></h3>
+<table border>
+ <tr>
+  <td>info scope <i>foo</i></td>
+  <td>Print all variables in the scope of function <i>foo</i></td>
+ </tr>
+
+ <tr>
+  <td>info shared</td>
+  <td>Print info about the shared libraries</td>
+ </tr>
+
+ <tr>
+  <td>info source</td>
+  <td>Print info about the source file</td>
+ </tr>
+
+ <tr>
+  <td>info functions</td>
+  <td>Print info about all functions</td>
+ </tr>
+
+ <tr>
+  <td>info variables</td>
+  <td>Print info about all variables</td>
+ </tr>
+
+</table>
+
+<p>
+<h3><a href="http://sourceware.org/gdb/onlinedocs/gdb/Dump_002fRestore-Files.html">Dump memory to files</a></h3>
+<table border>
+ <tr>
+  <td>dump memory <i>file</i> 0x12345 0x34567</td>
+  <td>Dump the memory region 0x12345 to 0x34567 to <i>file</i></td>
+ </tr>
+
+ <tr>
+  <td>restore <i>file</i> 0 0x12345</td>
+  <td>Load <i>file</i> content to memory starting at 0x12345</td>
+ </tr>
+
+</table>
+
+<p>
+<h3><a href="http://sourceware.org/gdb/onlinedocs/gdb/Memory-Region-Attributes.html">Memory region attributes</a></h3>
+<table border>
+ <tr>
+  <td>mem 0x12345 0x34567 ro</td>
+  <td>Set the memory region from 0x12345 to 0x34567 to be read-only (this restriction applies to GDB only)</td>
+ </tr>
+
+ <tr>
+  <td>info mem</td>
+  <td>List all memory regions</td>
+ </tr>
+
+ <tr>
+  <td>delete mem <i>num</i></td>
+  <td>Remove memory region <i>num<i> </td>
+ </tr>
+
+ <tr>
+  <td>disable mem <i>num</i></td>
+  <td>Disable memory region <i>num<i> </td>
+ </tr>
+</table>
+
+<p>
+<h3><a href="http://sourceware.org/gdb/onlinedocs/gdb/Tracepoints.html">Tracing facility</a></h3>
+<table border>
+ <tr>
+  <td>trace foo.c:121</td>
+  <td>Set a tracepoint at line 121 of foo.c</td>
+ </tr>
+ <tr>
+  <td>action</td>
+  <td>Set a series of actions for tracepoint</td>
+ </tr>
+ <tr>
+  <td>tstart</td>
+  <td>Start the trace experiment</td>
+ </tr>
+ <tr>
+  <td>tdump</td>
+  <td>Dump the trace</td>
+ </tr>
+ <tr>
+  <td>tstatus</td>
+  <td>Print info about current trace data collection</td>
+ </tr>
+
+</table>
+
+<h2>Troubleshooting GDB</h2>
+<h3>What is <br><font color="red">[Thread debugging using libthread_db enabled]<br>Cannot find new threads: generic error</font><br>error ?</h3>
+According to <a href="http://stackoverflow.com/questions/2702628/gdb-cannot-find-new-threads-generic-error">this link</a>, it
+seems GDB has issue when the debuggee "suddenly" loads <tt>libpthread.so</tt>. The fix is to start
+GDB with
+<pre>
+ $ LD_PRELOAD=/lib/libpthread.so.0 gdb --args ./myapps
+</pre> 
+or at GDB prompt (untested!),
+<pre>
+ (gdb) set exec-wrapper env 'LD_PRELOAD=/lib/libpthread.so.0'
+</pre>
+
+<h3><font color="red">Target does not support this type of hardware watchpoint</font> error ?</h3>
+When setting a read-access watch point (<tt>rwatch</tt>), one could encounter this error. The fix
+is to launch the debuggee first (e.g. set a break point somewhere), <b>then</b> use <tt>rwatch</tt>:
+<pre>
+ (gdb) start
+ (gdb) rwatch foo
+</pre>
+
+
+</body>
+</html>

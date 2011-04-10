@@ -1,0 +1,1278 @@
+Universe's best and legal Mac OS X reversing tutorial for newbies (or maybe not!)
+------------------------------------------------------------------------------
+(c) 2011 Fractal Guru (reverse AT put.as , http://reverse.put.as)
+
+Target: Macserialjunkie.com Cracking Challenge 09 #1
+Tools used: OTX, GDB, 0xED, gcc
+Platform: Mac OS X Leopard 10.6.5 @ Intel x86
+Document version: 0.1 (12/02/2011)
+
+Index:
+0 - Introduction
+1 - Building our toolkit
+2 - How to use our tools
+2.1 - OTX
+2.2 - GDB
+2.3 - Putting otx and gdb together
+3 - Reversing and cracking Challenge #1
+3.0 - Introduction and workflow
+3.1 - Patching the binary
+3.2 - Fishing a valid serial number
+3.3 - Keygen
+4 - Conclusion
+
+0 - Introduction
+----------------
+Update from the original version:
+
+Reversing and breaking protections is a great hobby and fantastic knowledge to possess.
+The problem is that many abuse this and want to profit from it. I really don't like not sharing
+knowledge because sharing also allows me to progress, seeking new challenges and learning new things.
+I really hope that you make good use of this information and do not share your cracks with the world,
+especially in MSJ that is full of idiots just wanting to rip off others work. Don't do that please.
+Don't make me regret once again releasing knowledge that may ease piracy!
+Enjoy the process, learn, get frustrated, and buy the apps if you really use them in your day to day.
+This tutorial is still based on 32bit binaries.
+
+Have fun,
+fG!
+
+----
+
+One of the most difficult tasks is to write a tutorial for beginners. It's not an easy task
+so here's an attempt to create one that can launch people with some basic knowledge into the
+world of reverse engineering (I consider cracking a subset of reverse engineering, and a very
+useful one as a learning platform).
+It's assumed you have basic x86 assembly knowledge (already too many good tutorials about this!).
+Some URLs:
+http://www.woodmann.com/crackz/Getstart.htm
+http://www.uc-forum.com/forum/programming-beginners/63947-reverse-engineering-beginners-guide-x86-assembly-and-debugging-windows-apps.html
+http://en.wikipedia.org/wiki/Assembly_language
+
+The term "function" will be used alot. If you know Objective-C or C++, you know it's not entirely 
+correct to use it. Method would be more correct in this context. But some parts of this tutorial
+can be used to reverse other languages where the term function is correct. It shouldn't be a big
+deal for you to handle.
+
+A word of caution: reversing/cracking is about exploring and thinking. You should get used to
+think and explore problems and find solutions for them. These days, Google and other search
+engines are your main friend and they can make your task much easier ! Get used to search, think
+and explore ! That's the beauty of Reverse Engineering, diving into the unknown !
+
+And now, let's start the fun !
+fG!
+
+1 - Building our toolkit
+--------------------------
+
+The first step is to build our reversing toolkit. 
+For me, two tools are essential, a disassembler and a debugger (especially this one!).
+There are three available disassemblers and two debuggers. In disassemblers we have
+IDA Pro, Otool and OTX. IDA is the most famous and powerful but it's paid (there is a demo 
+version available (HexRays released a native OS X demo version!), and a warez version is around of
+course) and it's expensive. If you are serious to RE field and can buy it, do it ! 
+If your company can buy it, ask them to buy it. It's worth the money! 
+An excellent book about IDA is "The IDA Pro Book: The Unofficial Guide to the World's Most Popular Disassembler"
+by Chris Eagle. Buy it if you can (it's not that expensive and author deserves it!).
+The other two options are technically just one, since OTX is a frontend for Otool.
+OTX is available at: http://otx.osxninja.com/
+Otool is part of XCode, available at: http://developer.apple.com/ (open an account, it's free!)
+GDB is part of XCode, so you should download both.
+ 
+The available debuggers are GDB and IDA (the debugger is integrated with the disassembler).
+GDB is free and part of XCode. This tutorial will use GDB since it's faster to use (because IDA uses remote
+debugging, meaning you will need two machines to debug) and it's capable to do everything we need
+for this tutorial and any future uses you may have.
+
+To make GDB even more easier to use, you should grab gdbinit. This is a script for GDB that will
+enhance it's output and has macros to make our work easier and faster.
+Grab my modified version here: http://reverse.put.as/wp-content/uploads/2010/04/gdbinit73
+
+To install gdbinit, you will need to copy it into your home folder with the name ".gdbinit".
+
+For example, if you have downloaded the file gdbinit73 into your download folders, you can install
+it using Terminal.app with the following command:
+cp ~/Downloads/gdbinit73 ~/.gdbinit
+
+~ in Unix means your home folder.
+
+There is a bug in Apple GDB version. You can read about it here: http://reverse.put.as/2008/11/28/apples-gdb-bug/
+It's annoying and not a big obstacle to our work, and it's useful to fix it.
+You might also want to give a look at http://reverse.put.as/2009/08/26/gdb-patches/ , which features other patches.
+
+The next tool is an Hex Editor. I use 0xEd, available at http://www.suavetech.com/0xed/0xed.html.
+Hex-Fiend is another good alternative (http://ridiculousfish.com/hexfiend/)
+
+You should be able to install everything without any problem.
+
+To resume, our basic reversing toolkit is composed of gdb, OTX/otool/IDA and 0xED/Hex-Fiend.
+
+2 - How to use our tools
+------------------------
+
+2.0 - Updating OTX
+------------------
+
+The binary version of OTX doesn't support 64bit binaries, so you should download the version from the
+SVN repository. The information is available here: http://otx.osxninja.com/subinfo.html
+You will need XCode to compile the project.
+
+2.1 - OTX
+---------
+
+Run OTX and you will get the program window. We need to open the binary file we want to disassemble.
+Open a Terminal.app windows (yes I really love Terminal, some things are done faster and better thru the command line) and
+go to the folder where you have the Cracking Challenge #1 application.
+List all available files with "ls" command.
+You should see a folder named Challenge #1.app. This is our target.
+Mac OS X programs have a nice program structure, where everything (almost) is contained into a single folder.
+Using Challenge #1.app as an example, we have the following structure inside it:
+Challenge\ #1.app/Contents/
+Then we have the following folders:
+Info.plist	MacOS		PkgInfo		Resources
+
+You can find the main binary inside the MacOS folder. This is where we should start. 
+Frameworks folder (not present in this binary) might have interesting binaries to disassemble because
+some protections can reside there instead in the main binary.
+Listing the MacOS folder gives us:
+$ ls MacOS/
+Challenge #1
+
+Challenge #1 is the binary we want to disassemble. The full path is:
+Challenge\ #1.app/Contents/MacOS/Challenge #1
+
+Some information from the binary can be extracted with the "file" command or otool.
+To see if this is a fat binary (contains more than 1 architecture), you can use the following command:
+$ file Challenge\ #1.app/Contents/MacOS/Challenge\ #1 
+Challenge #1.app/Contents/MacOS/Challenge #1: Mach-O universal binary with 2 architectures
+Challenge #1.app/Contents/MacOS/Challenge #1 (for architecture i386):	Mach-O executable i386
+Challenge #1.app/Contents/MacOS/Challenge #1 (for architecture ppc):	Mach-O executable ppc
+
+The equivalent otool command is:
+$ otool -h Challenge\ #1.app/Contents/MacOS/Challenge\ #1 
+Challenge #1.app/Contents/MacOS/Challenge #1 (architecture i386):
+Mach header
+      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface       7          3  0x00          2    19       2356 0x00000085
+Challenge #1.app/Contents/MacOS/Challenge #1 (architecture ppc):
+Mach header
+      magic cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18          0  0x00          2    17       2412 0x00000085
+
+So this binary contains two architectures, x86 32 bits and PowerPC.
+
+Let's try to disassemble the x86 version.
+Select Open File in OTX and select that binary. You should select x86 as processor (it's the default).
+You might change the output name or just leave the default. Click Save and select where to save (usually
+Desktop or select one folder dedicated to your reversing project to have things organized).
+If you can also use the otx command line version (I have installed mine at /usr/local/bin).
+I usually use the following command "otx Challenge #1 >dump.txt".
+
+And voila, you have disassembled your first binary. Very simple ! The output file is the disassembled listing of the
+selected binary, and it will be our main guide into reversing the target.
+
+2.2 - GDB
+---------
+
+Gdb is a very powerful debugger although not easy and not intuitive as Windows equivalents like OllyDbg
+or Softice (well, Softice as also text only).
+Nevertheless you can master it and do everything you should need for your RE projects.
+Let's give it a shot and introduce you the world of GDB !
+
+Just a little note on the commands to be used:
+1) Commands issued inside gdb will always use the following prompt: gdb$
+2) Commands issued in a Terminal.app shell will always use the following prompt: shell$
+
+To learn gdb we are going to use a simpler target so we can understand the basic commands.
+You will need to compile the following program example.c:
+------------------- CUT HERE -----------------
+#include <stdio.h>
+
+main(int argc, char *argv[])
+{
+ printf("Hello GDB!\n");
+ printf("Argument is: %s\n", argv[1]);
+}
+------------------- CUT HERE -----------------
+Save this source code somewhere and compile it with (if you have called it example.c, else modify the name):
+$ gcc -arch i386 -o example example.c
+
+Note:
+The -arch i386 option is required to compile the binary in 32bits instead of the default 64bits in Snow Leopard.
+
+This small program will print 2 lines, where the second prints the argument from the command line.
+Example:
+$ ./example Test
+Hello GDB!
+Argument is: Test
+
+GDB runs from the command line, so you will need to open a Terminal.App (at this moment you should already
+have a Terminal.app shortcut into your Dock hehehe). To start gdb, just type "gdb" at the prompt and press enter.
+You should get something like this (date should be different since this one was compiled by me on January):
+GNU gdb 6.3.50-20050815 (Apple version gdb-768) (Fri Jan 23 17:22:29 UTC 2009)
+Copyright 2004 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-apple-darwin".
+gdb$ 
+
+To make sure gdbinit is installed correctly, type "help user". You should get a list of available commands,
+the ones created by gdbinit script.
+
+There are two different ways to debug a program, one is to attach to a version already running and the other one to
+start the program from gdb.
+To attach you will need the PID (process ID) for your target. You can find it by issuing a "ps aux" command
+(or in Activity Monitor). The PID is the number in the second column. After you have the PID, you use the 
+"attach <PID>" gdb command.
+To start the program from gdb, you can use the "exec-file <PATH_TO_EXECUTABLE_FILE>" (this is the best way to
+overcome the gdb bug described earlier, if you don't have a patched version).
+If you need to set parameters to the executable (usually not needed for our targets), you can use "set args" command
+or set the arguments when you start the program with "run" command.
+
+Practical example:
+To start debugging our example code, open a command prompt and then type the following commands:
+$gdb
+(gdb is loaded)
+gdb$ exec-file "PATH/example"
+(substitute PATH for the full path where our example binary is)
+
+or
+
+$cd "PATH"
+(substitute PATH for the full path where our example binary is)
+$gdb
+(gdb is loaded)
+gdb$ exec-file ./example
+
+In the first example we are using the full path to our binary, in the second example we change into the correct directory 
+and just point to the binary. It's a matter of personal taste (you can use TAB completation inside gdb!).
+
+The basic commands we need are related to breakpoints, stepping, change flags or memory, dump/evaluate memory locations.
+
+What is a breakpoint ?
+From Wikipedia (http://en.wikipedia.org/wiki/Breakpoint):
+"A breakpoint, in software development, is an intentional stopping or pausing place in a program, put in place for debugging purposes. 
+More generally, a breakpoint is a means of acquiring knowledge about a program during its execution. During the interruption, the 
+programmer inspects the test environment (logs, memory, files, etc.) to find out whether the program functions as expected.
+
+In practice, a breakpoint consists of one or more conditions that determine when a program's execution should be interrupted."
+
+The breakpoint related commands interesting to us are:
+1) bp/b (set a breakpoint)
+
+You can set a breakpoint on a memory location (most used) or in a symbol (if GDB knows about it).
+For a memory breakpoint you just need to use the memory location where you want the program to stop.
+Example:
+gdb$ bp *0x1234
+
+This will set a breakpoint on memory location 0x1234 (you need to use the * before the address). You should have guessed that 0x is the 
+format for hexadecimal number. If program execution reaches that memory location, program execution will be interrupted and you will
+get back to gdb prompt!
+
+Setting a breakpoint on a symbol is equivalent to use a name instead a memory location. Usually it's a function from a library or some
+other symbol that GDB can solve.
+An example is:
+gdb$bp [NSControl stringValue]
+
+This means whenever the program calls the stringValue function gdb will halt it's execution and return control to us. This function can 
+allow you to break on text input routines, so you can for example fish a valid serial.
+
+2) bpl (list all breakpoints)
+This command will list all breakpoints active or inactive.
+Example:
+gdb$ bpl
+Num Type           Disp Enb Address    What
+1   breakpoint     keep y   0x00001f44 <start>
+2   breakpoint     keep n   0x00001f46 <start+2>
+
+3) bpd/bpe (disable/enable a breakpoint)
+This will enable or disable a breakpoint.
+You should use the Num column from bpl output to select which one to enable or disable.
+Example:
+gdb$ bpd 1
+gdb$ bpl
+Num Type           Disp Enb Address    What
+1   breakpoint     keep n   0x00001f44 <start>      <- we have disabled this one as you can see
+2   breakpoint     keep n   0x00001f46 <start+2>
+
+4) bpc (clear breakpoint)
+This will clear a breakpoint. Unlike bpe/bpd, you should use the memory location to remove from breakpoint list (same syntax as bp command).
+Example:
+gdb$ bpc *0x1f44
+gdb$ bpl
+Num Type           Disp Enb Address    What
+2   breakpoint     keep n   0x00001f46 <start+2>
+
+You can also use the delete command to clear breakpoints by number (bpc is a gdbinit command, which uses clear instead delete [maybe to be modified in the future]).
+Example:
+gdb$ delete 2
+gdb$ bpl
+No breakpoints or watchpoints.
+
+Breakpoints are done, let's go to the step commands.
+Step commands will allow you to "browse" and run the assembly code for your target. All step commands 
+allow you to advance to the next address pointed by EIP (meaning, executing the code pointed by EIP).
+But there is a distinction to be made. Some commands allow you to go into functions or subroutines, usually "calls". 
+Making it easier to understand, if you find a call to another function and want to see what happens
+inside that function, you can step into that function and trace it, and then you get back to where 
+you were (in reality you get back to the address after the call you traced). Or you maybe want 
+to skip that call and just execute it without getting into it's details. 
+The functions I regularly use are nexti (or it's shortcut ni) and stepo (if I want to skip over calls or subroutines).
+These should be enough for your reversing efforts.
+
+Step commands interesting to us are (this is just a dump of help from gdb, should be enough):
+1) next
+gdb$ help next
+Step program, proceeding through subroutine calls.
+Like the "step" command as long as subroutine calls do not happen;
+when they do, the call is treated as one instruction.
+Argument N means do this N times (or till program stops for another reason).
+
+2) nexti
+gdb$ help nexti
+Step one instruction, but proceed through subroutine calls.
+Argument N means do this N times (or till program stops for another reason).
+
+3) step
+gdb$ help step
+Step program until it reaches a different source line.
+Argument N means do this N times (or till program stops for another reason).
+
+4) stepi
+gdb$ help stepi
+Step one instruction exactly.
+Argument N means do this N times (or till program stops for another reason).
+
+5) stepo
+gdb$ help stepo
+Step over calls (interesting to bypass the ones to msgSend)
+This function will set a temporary breakpoint on next instruction after the call so the call will be bypassed
+You can safely use it instead nexti or n since it will single step code if it's not a call instruction 
+(unless you want to go into the call function)
+
+Try to play with these step commands and see what are the differences between them. Like I said, 
+nexti and stepo should be enough!
+
+The dump/evaluate commands will allow you to dump the contents of memory, cpu registers, variables,
+pointers, etc.
+
+Dump/evaluate commands are:
+1) x
+gdb$ help x
+Examine memory: x/FMT ADDRESS.
+ADDRESS is an expression for the memory address to examine.
+FMT is a repeat count followed by a format letter and a size letter.
+Format letters are o(octal), x(hex), d(decimal), u(unsigned decimal),
+  t(binary), f(float), a(address), i(instruction), c(char) and s(string),
+  T(OSType).
+Size letters are b(byte), h(halfword), w(word), g(giant, 8 bytes).
+The specified number of objects of the specified size are printed
+according to the format.
+
+Defaults for format and size letters are those previously used.
+Default count is 1.  Default address is following last thing printed
+with this command or "print".
+
+"x" will allow you to examine memory addresses and registers. It allows you to use formats for the output (something like printf).
+Usually you will want to use the "x" format (hexadecimal) and "s" format (string).
+For example, to dump EAX register contents in hexadecimal you would use gdb$ x/x $eax
+Check this live example, using our example.c code:
+gdb$ 
+0x00001fb9 in main ()
+--------------------------------------------------------------------------[regs]
+  EAX: 00001FE1  EBX: 00001FB2  ECX: BFFFF848  EDX: 00000000  o d I t S z a p c 
+  ESI: 00000000  EDI: 00000000  EBP: BFFFF828  ESP: BFFFF810  EIP: 00001FB9
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F
+[001F:BFFFF810]----------------------------------------------------------[stack]
+BFFFF860 : D2 F9 FF BF  F1 F9 FF BF - 01 FA FF BF  3B FA FF BF ............;...
+BFFFF850 : 33 F9 FF BF  6C F9 FF BF - 88 F9 FF BF  C1 F9 FF BF 3...l...........
+BFFFF840 : 00 00 00 00  01 00 00 00 - FC F8 FF BF  00 00 00 00 ................
+BFFFF830 : 01 00 00 00  48 F8 FF BF - 50 F8 FF BF  BC F8 FF BF ....H...P.......
+BFFFF820 : 00 10 00 00  BC F8 FF BF - 40 F8 FF BF  7A 1F 00 00 ........@...z...
+BFFFF810 : 00 00 00 00  00 00 00 00 - 3C F8 FF BF  37 10 E0 8F ........<...7...
+[0017:00001FB9]-----------------------------------------------------------[code]
+0x1fb9 <main+19>:	mov    DWORD PTR [esp],eax
+0x1fbc <main+22>:	call   0x300a <dyld_stub_puts>
+0x1fc1 <main+27>:	mov    eax,DWORD PTR [ebp+0xc]
+0x1fc4 <main+30>:	add    eax,0x4
+0x1fc7 <main+33>:	mov    eax,DWORD PTR [eax]
+0x1fc9 <main+35>:	mov    DWORD PTR [esp+0x4],eax
+0x1fcd <main+39>:	lea    eax,[ebx+0x3a]
+0x1fd3 <main+45>:	mov    DWORD PTR [esp],eax
+--------------------------------------------------------------------------------
+gdb$ x/s $eax
+0x1fe1 <main+59>:	 "Hello GDB!"
+
+We just printed the string that was pointed by EAX register.
+Still using the same example, if you increase count to 2 (x/2s), the next string is printed too.
+gdb$ x/2s $eax
+0x1fe1 <main+59>:	 "Hello GDB!"
+0x1fec <main+70>:	 "Argument is: %s\n"
+
+2) print
+This one is used more or less like "x". Usually used when you have the source, so you can print the program variables.
+Check it's help on gdb.
+
+3) po
+gdb$ help po
+Ask an Objective-C object to print itself.
+
+This command will allow you to print Objective-C objects. This command is very handy when you are 
+debugging Objective-C and you want to print the object.
+You can't simply see an object by using the "x" command. 
+Little example:
+Breakpoint in 0x30001acf
+  +548  30001acf  890424         movl          %eax,(%esp,1) <- NSBundle </Users/aaaaaaaa/You Control Desktops.app/> (loaded)
+  +551  30001ad2  e82eb50300     calll         0x3003d005                                _objc_msgSend
+
+In gdb:
+gdb $ x/s $eax
+0x30a9c0:        "?c??"
+gdb $ po $eax
+NSBundle </Users/username/reverse/You Control Desktops-newcrack.app> (loaded)
+
+You can see the object where eax is pointing too. Much better than the first x/s $eax
+
+Change flags or memory commands are:
+1) cfX, where X can be a,c,d,i,o,p,s,t,z,s
+All the cfX commands are from gdbinit. These will allow you to change the cpu register flags (they will invert the current flag state).
+For example, the JE (jump if equal) assembler instruction, will be followed (meaning the code will jump to the new location) only if the Zero flag 
+(ZF or Z) is equal to 1. If the next instruction to be executed is a JE and the Zero flag is equal to 0, there will be no jump. But if you want to 
+easily force the jump, then you just need to modify the Zero Flag and make it equal to one. You can simply do this by using the cfz command, like 
+gdb$ cfz
+This would change the value for ZF from 0 to 1. Or maybe you don't want the jump to be followed (ZF=1) and so you issue cfz to reverse ZF to 0.
+The different cfX commands are:
+cfa -- Change Auxiliary Carry Flag
+cfc -- Change Carry Flag
+cfd -- Change Direction Flag
+cfi -- Change Interrupt Flag
+cfo -- Change Overflow Flag
+cfp -- Change Parity Flag
+cfs -- Change Sign Flag
+cft -- Change Trap Flag
+cfz -- Change Zero Flag
+
+2) set
+The set command has many available subcommands. We are interested in changing memory contents and/or registers contents.
+To change memory location the syntax is: 
+gdb$ set *address = newvalue , where address is in the usual hexadecimal format.
+The memory location can be program code (if you want for example to live patch the program) or any 
+other memory location (for example an address holding a variable).
+
+If you want to change a register content, for example EAX, the syntax is: 
+gdb$ set $eax = newvalue
+
+You can use complex expressions with set, for example type casting. For example if you want to write a single byte you could use:
+gdb$ set $eax = (char) 0x12345
+gdb$ print $eax
+$3 = 0x45
+gdb$ set $eax = (int) 0x12345
+gdb$ print $eax
+$4 = 0x12345
+
+Do you understand what happened with this example ? Think about it (should be easy to understand!).
+
+2.3 - Putting otx and gdb together
+----------------------------------
+
+Let's play a little bit with gdb so you can watch a debugging session.
+Disassemble the example binary with otx. You should have an output more or like this (I have added line 
+numbers for easy reference here!):
+md5: 27cc7b61ed3322057d52b6b014d589e6
+
+(__TEXT,__text) section
+
+(Uninteresting code here for our purposes, we are just interested in the main function)
+
+_main:
+1:     +0  00001fa6  55                      pushl       %ebp
+2:     +1  00001fa7  89e5                    movl        %esp,%ebp
+3:     +3  00001fa9  53                      pushl       %ebx
+4:     +4  00001faa  83ec14                  subl        $0x14,%esp
+5:     +7  00001fad  e800000000              calll       0x00001fb2
+6:    +12  00001fb2  5b                      popl        %ebx
+7:    +13  00001fb3  8d832f000000            leal        0x0000002f(%ebx),%eax         Hello GDB!
+8:    +19  00001fb9  890424                  movl        %eax,(%esp)
+9:    +22  00001fbc  e849100000              calll       0x0000300a                    _puts
+10:   +27  00001fc1  8b450c                  movl        0x0c(%ebp),%eax
+11:   +30  00001fc4  83c004                  addl        $0x04,%eax
+12:   +33  00001fc7  8b00                    movl        (%eax),%eax
+13:   +35  00001fc9  89442404                movl        %eax,0x04(%esp)
+14:   +39  00001fcd  8d833a000000            leal        0x0000003a(%ebx),%eax         Argument is: %s\n
+15:   +45  00001fd3  890424                  movl        %eax,(%esp)
+16:   +48  00001fd6  e82a100000              calll       0x00003005                    _printf
+17:   +53  00001fdb  83c414                  addl        $0x14,%esp
+18:   +56  00001fde  5b                      popl        %ebx
+19:   +57  00001fdf  c9                      leave
+20:   +58  00001fe0  c3                      ret
+
+Remember that our source version looks like:
+main(int argc, char *argv[])
+{
+ printf("Hello GDB!\n");
+ printf("Argument is: %s\n", argv[1]);
+}
+
+You can easily see that the compiler used "puts" for our first printf and used printf for our second.
+This was a compiler optimization. Compilers usually optimized your source code and use the best options 
+available to make your code shorter and faster.
+Since our first printf doesn't have any format string being used, it can be replaced by a shorter and 
+faster function at compiler level, puts, and still do what we wanted in our source code, to print a 
+simple "Hello GDB!" message.
+
+Let's start debugging our little program. Open gdb and start our example program.
+shell$ gdb
+GNU gdb 6.3.50-20050815 (Apple version gdb-962) (Sat Jul 26 08:14:40 UTC 2008)
+Copyright 2004 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-apple-darwin".
+gdb$ exec-file ./example
+Reading symbols for shared libraries ... done
+gdb$ 
+
+If you type the run command, our program will run and exit, since we haven't set any breakpoint yet.
+Let's give it a try:
+gdb$ run
+Reading symbols for shared libraries .++. done
+Hello GDB!
+Argument is: (null)
+
+Program exited with code 024.
+--------------------------------------------------------------------------[regs]
+  EAX:Error while running hook_stop:
+No registers.
+gdb$ 
+
+You can easily see our messages printed.
+Let's try running our program with an argument:
+gdb$ run TESTING 
+Hello GDB!
+Argument is: TESTING
+
+Program exited with code 025.
+--------------------------------------------------------------------------[regs]
+  EAX:Error while running hook_stop:
+No registers.
+gdb$ 
+
+Now let's set our first breakpoint. We want to breakpoint the program before the first message "Hello GDB!" 
+is printed. We already know that the function responsible to print that first message is "puts", and 
+you can find the call to this function at line 9. Let's explain this line contents:
+
+9:    +22              : local offset, meaning the offset inside this function (it's not interesting
+                         to us and you can configure otx to remove this)
+00001fbc               : code address (hexadecimal format), this is the address we are going to use
+                         for our breakpoint(s)
+e849100000             : opcodes, these are the bytes your cpu will read and form your instructions
+                         (and the ones we can modify to patch the code)
+calll       0x0000300a : this is the assembly mnemonic correspondent to the previous opcode bytes
+_puts                  : this is additional information that otx was able to identify, in this case 
+                         it identified we are going to call the "puts" function
+                                                                 
+Hopefully you have understood otx output. So if we want to break on line 9, we should use memory 
+address 0x1fbc. To be honest, since we have the source code, we could use source file line reference
+to create the breakpoint but since we usually don't have source for our targets, this will not be explored.
+
+Set the breakpoint:
+gdb$ bp *0x1fbc  
+Breakpoint 1 at 0x1fbc
+gdb$ 
+
+And list:
+gdb$ bpl
+Num Type           Disp Enb Address    What
+1   breakpoint     keep y   0x00001fbc <main+22>
+gdb$ 
+
+Our first breakpoint is set, we can run again our program (you should already have noted that we can
+run again and again the program after we have loaded it into gdb).
+
+Let's go...
+gdb$ run
+
+Breakpoint 1, 0x00001fbc in main ()
+--------------------------------------------------------------------------[regs]
+  EAX: 00001FE1  EBX: 00001FB2  ECX: BFFFF848  EDX: 00000000  o d I t S z a p c 
+  ESI: 00000000  EDI: 00000000  EBP: BFFFF828  ESP: BFFFF810  EIP: 00001FBC
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F
+[001F:BFFFF810]----------------------------------------------------------[stack]
+BFFFF860 : D2 F9 FF BF  F1 F9 FF BF - 01 FA FF BF  3B FA FF BF ............;...
+BFFFF850 : 33 F9 FF BF  6C F9 FF BF - 88 F9 FF BF  C1 F9 FF BF 3...l...........
+BFFFF840 : 00 00 00 00  01 00 00 00 - FC F8 FF BF  00 00 00 00 ................
+BFFFF830 : 01 00 00 00  48 F8 FF BF - 50 F8 FF BF  BC F8 FF BF ....H...P.......
+BFFFF820 : 00 10 00 00  BC F8 FF BF - 40 F8 FF BF  7A 1F 00 00 ........@...z...
+BFFFF810 : E1 1F 00 00  00 00 00 00 - 3C F8 FF BF  37 10 E0 8F ........<...7...
+[0017:00001FBC]-----------------------------------------------------------[code]
+0x1fbc <main+22>:	call   0x300a <dyld_stub_puts>
+0x1fc1 <main+27>:	mov    eax,DWORD PTR [ebp+0xc]
+0x1fc4 <main+30>:	add    eax,0x4
+0x1fc7 <main+33>:	mov    eax,DWORD PTR [eax]
+0x1fc9 <main+35>:	mov    DWORD PTR [esp+0x4],eax
+0x1fcd <main+39>:	lea    eax,[ebx+0x3a]
+0x1fd3 <main+45>:	mov    DWORD PTR [esp],eax
+0x1fd6 <main+48>:	call   0x3005 <dyld_stub_printf>
+--------------------------------------------------------------------------------
+gdb$ 
+
+This is the output you will get. GDB did it's job correctly and program stopped at address 0x1fbc as we wanted.
+There are two areas of output interesting to us. The first one is [regs] and the seconde [code].
+In [regs] you can find the current state of cpu registers and flags at breakpoint moment. You should 
+know the meaning of each register ;)
+In [code] you have disassembly output for the current memory address. The first line is always the
+next line code to be executed.
+
+If you compare otx disassemble output and gdb output, you will see there are cosmetic differences. 
+These are due to otx using AT&T syntax and gdb is configured for Intel syntax. You can modify gdb to
+use AT&T syntax if you aren't comfortable with different syntaxes. Refer to
+http://www.redhat.com/docs/manuals/enterprise/RHEL-3-Manual/gnu-assembler/i386-syntax.html if you 
+are interested in understanding differences between the two.
+
+At this moment, you can do various operations. For example, you can dump the contents of EAX register
+or any other memory location. Or you can step the code to understand it, or simply let the program 
+continue running without any further interference.
+
+If you use "c" or "continue" commands, program will continue running and eventually end. Let's try.
+
+gdb$ c
+Hello GDB!
+Argument is: (null)
+
+Program exited with code 024.
+--------------------------------------------------------------------------[regs]
+  EAX:Error while running hook_stop:
+No registers.
+gdb$ 
+
+Since our breakpoint is still set, we can run the program again and it will stop again at the same place. Try it...
+Assuming you did tried, we are back to our breakpoint. We want to follow and understand the code, so
+we are going to step each line of code.
+Since the next instruction to be executed is a call, you know we can step over it (meaning we don't
+want to analyse what "puts" function will do) or we can step into it (meaning we want to analyse 
+what "puts" is going to do).
+
+For this example, we are not interested in understanding how "puts" work (since we already know it
+will just print characters) and just want it to be executed.
+We can use either "n", "ni", "nexti", "stepo" gdb commands. If you use "stepi" you will get inside 
+"puts" function. The safest bet is to use "stepo" if you want to skip over calls.
+
+Let's try...
+gdb$ stepo
+Breakpoint 3 at 0x1fc1 <----------- you can ignore this, it's a temporary breakpoint used by stepo
+Hello GDB!             <----------- OUR MESSAGE WAS PRINTED
+
+Breakpoint 3, 0x00001fc1 in main ()
+--------------------------------------------------------------------------[regs]
+  EAX: 0000000A  EBX: 00001FB2  ECX: 0000000B  EDX: 00000000  o d I t S z a P c 
+  ESI: 00000000  EDI: 00000000  EBP: BFFFF828  ESP: BFFFF810  EIP: 00001FC1
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F
+[001F:BFFFF810]----------------------------------------------------------[stack]
+BFFFF860 : D2 F9 FF BF  F1 F9 FF BF - 01 FA FF BF  3B FA FF BF ............;...
+BFFFF850 : 33 F9 FF BF  6C F9 FF BF - 88 F9 FF BF  C1 F9 FF BF 3...l...........
+BFFFF840 : 00 00 00 00  01 00 00 00 - FC F8 FF BF  00 00 00 00 ................
+BFFFF830 : 01 00 00 00  48 F8 FF BF - 50 F8 FF BF  BC F8 FF BF ....H...P.......
+BFFFF820 : 00 10 00 00  BC F8 FF BF - 40 F8 FF BF  7A 1F 00 00 ........@...z...
+BFFFF810 : E1 1F 00 00  00 00 00 00 - 3C F8 FF BF  37 10 E0 8F ........<...7...
+[0017:00001FC1]-----------------------------------------------------------[code]
+0x1fc1 <main+27>:	mov    eax,DWORD PTR [ebp+0xc]
+0x1fc4 <main+30>:	add    eax,0x4
+0x1fc7 <main+33>:	mov    eax,DWORD PTR [eax]
+0x1fc9 <main+35>:	mov    DWORD PTR [esp+0x4],eax
+0x1fcd <main+39>:	lea    eax,[ebx+0x3a]
+0x1fd3 <main+45>:	mov    DWORD PTR [esp],eax
+0x1fd6 <main+48>:	call   0x3005 <dyld_stub_printf>
+0x1fdb <main+53>:	add    esp,0x14
+--------------------------------------------------------------------------------
+gdb$ 
+
+What we have here ? Next code to be executed is line 10: and we can clearly see that "puts" function 
+was executed (Hello GDB! message is displayed!).
+As before, you can do whatever operations you want now. You can continue stepping thru the code, set
+more breakpoints, dump memory/registers, continue the program, etc...
+
+As an exercise, now we want to stop at line 13. How many alternatives do you have to do that ? At 
+least 2 ! Breakpoint on address correspondent to line 13 or step thru the code until you reach line 13.
+You should reach something like this:
+gdb$ 
+0x00001fc9 in main ()
+--------------------------------------------------------------------------[regs]
+  EAX: 00000000  EBX: 00001FB2  ECX: 0000000B  EDX: 00000000  o d I t S z a p c 
+  ESI: 00000000  EDI: 00000000  EBP: BFFFF828  ESP: BFFFF810  EIP: 00001FC9
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F
+[001F:BFFFF810]----------------------------------------------------------[stack]
+BFFFF860 : D2 F9 FF BF  F1 F9 FF BF - 01 FA FF BF  3B FA FF BF ............;...
+BFFFF850 : 33 F9 FF BF  6C F9 FF BF - 88 F9 FF BF  C1 F9 FF BF 3...l...........
+BFFFF840 : 00 00 00 00  01 00 00 00 - FC F8 FF BF  00 00 00 00 ................
+BFFFF830 : 01 00 00 00  48 F8 FF BF - 50 F8 FF BF  BC F8 FF BF ....H...P.......
+BFFFF820 : 00 10 00 00  BC F8 FF BF - 40 F8 FF BF  7A 1F 00 00 ........@...z...
+BFFFF810 : E1 1F 00 00  00 00 00 00 - 3C F8 FF BF  37 10 E0 8F ........<...7...
+--------------------------------------------------------------------[ObjectiveC]
+0x0:	 <Address 0x0 out of bounds>
+[0017:00001FC9]-----------------------------------------------------------[code]
+0x1fc9 <main+35>:	mov    DWORD PTR [esp+0x4],eax    <---- first mov instruction
+0x1fcd <main+39>:	lea    eax,[ebx+0x3a]
+0x1fd3 <main+45>:	mov    DWORD PTR [esp],eax        <---- 2nd mov instruction
+0x1fd6 <main+48>:	call   0x3005 <dyld_stub_printf>
+0x1fdb <main+53>:	add    esp,0x14
+0x1fde <main+56>:	pop    ebx
+0x1fdf <main+57>:	leave  
+0x1fe0 <main+58>:	ret    
+--------------------------------------------------------------------------------
+gdb$ 
+
+For now you can ignore the ObjectiveC part. The code for our printf function is:  
+printf("Argument is: %s\n", argv[1]);
+You can easily see that we have two arguments passed onto printf function, "Argument is: %s\n" and argv[1].
+You should already know that arguments are passed into the stack (ESP) in reverse order, from last to first.
+So this first mov instruction is moving the second argument into the stack and the second mov is moving
+the first argument.
+
+You should be able to identify that in this case the was no argument to "run" command since EAX is empty.
+If you have used a parameter (or set args command) EAX would hold it's contents. Try it ! When you stop 
+there, use the "x" command to dump EAX contents, like this:
+(I used run TESTING)
+gdb$ x/s $eax
+0xbffff923:	 "TESTING"
+
+You can step to line 15 (0x1fd3 address) and dump again the contents of EAX. You should see the first
+argument to printf function.
+
+And that's it ! The basics are covered. You should now know how to set breakpoints, step code and 
+dump memory/register contents.
+
+
+3 - Reversing and cracking Challenge #1
+---------------------------------------
+
+3.0 - Introduction and workflow
+-------------------------------
+
+The first thing to do is reconnaissance. We need to understand what are the program limits and what 
+messages (if any!) are being displayed about those limits.
+If we have an error message like "Bad serial", "Trial is expired" or something like this, the next 
+step is to check if this message is present in the program binaries in plain text, which can give us
+fast clues where we should start our work.
+
+The best tool for this job is "grep". If you have Unix experience you should already know it, else 
+you are about to be introduced.
+We want to grep all files belonging to our application. Best way is like this:
+
+shell$ cd Challenge\ #1.app/Contents/
+shell$ grep -r -i "message" *
+(-r means recursive and -i case insensitive)
+
+When you start Challen #1 for the first time you have a message telling you about the goals of this crackme.
+Continue and insert a random name and a random serial. You get an error message:
+"The name and serial number combination you entered is incorrect."
+Try to search for that one...
+There is one hit at "Contents/Resources/English.lproj/MainMenu.nib/keyedobjects.nib".
+
+shell$ grep -r -i "you entered is incorrect" *
+Binary file Challenge #1.app/Contents/Resources/English.lproj/MainMenu.nib/keyedobjects.nib matches
+
+This means that there are no direct references in the main binary to the string, so we need to 
+use other methods.
+
+Another classic way is to open the disassembly listing and search for methods with interesting names.
+If you browse the disassembly for this challenge, you will find an interesting string "isRegistered".
+Unfortunately, many developers for OS X use names like this for their registration/protection code,
+so it's very easy to track them.
+
+The interesting place where you find this is here:
+-(void)[Level1 applicationDidFinishLaunching:]
+    +0  0000251e  55                      pushl       %ebp
+    +1  0000251f  89e5                    movl        %esp,%ebp
+    +3  00002521  53                      pushl       %ebx
+    +4  00002522  83ec24                  subl        $0x24,%esp
+    +7  00002525  8b5d08                  movl        0x08(%ebp),%ebx
+   +10  00002528  a110400000              movl        0x00004010,%eax               isRegistered
+   +15  0000252d  891c24                  movl        %ebx,(%esp)
+   +18  00002530  89442404                movl        %eax,0x04(%esp)
+   +22  00002534  e8252b0000              calll       0x0000505e                    -[(%esp,1) isRegistered]
+   +27  00002539  84c0                    testb       %al,%al
+   +29  0000253b  742b                    je          0x00002568
+
+From Apple's documentation available at 
+http://developer.apple.com/library/mac/#documentation/cocoa/reference/NSApplicationDelegate_Protocol/Reference/Reference.html
+you get the following about applicationDidFinishLaunching:
+Delegates can implement this method to perform further initialization. This method is called after 
+the application’s main run loop has been started but before it has processed any events. If the 
+application was launched by the user opening a file, the delegate’s application:openFile: method is 
+called before this method. If you want to perform initialization before any files are opened, implement
+the applicationWillFinishLaunching: method in your delegate, which is called before application:openFile:.)
+
+This is a good place to start in Cocoa apps, because many developers start checking here if trials are ok,
+if serial numbers are ok, etc.
+This is more or less the behaviour we have experienced with the crackme, because we got that initial
+message telling us about what we need to do (we can speculate that the message will not appear if the
+crackme is registered successfully).
+
+Getting back to that piece of code:
+-(void)[Level1 applicationDidFinishLaunching:]
+    +0  0000251e  55                      pushl       %ebp
+    +1  0000251f  89e5                    movl        %esp,%ebp
+    +3  00002521  53                      pushl       %ebx
+    +4  00002522  83ec24                  subl        $0x24,%esp
+    +7  00002525  8b5d08                  movl        0x08(%ebp),%ebx
+   +10  00002528  a110400000              movl        0x00004010,%eax               isRegistered
+   +15  0000252d  891c24                  movl        %ebx,(%esp)
+   +18  00002530  89442404                movl        %eax,0x04(%esp)
+   +22  00002534  e8252b0000              calll       0x0000505e                    -[(%esp,1) isRegistered] <- call the routine
+   +27  00002539  84c0                    testb       %al,%al
+   +29  0000253b  742b                    je          0x00002568 <- if it's not registered, then it will show the bad message
+   +31  0000253d  a10c500000              movl        0x0000500c,%eax
+   +36  00002542  8b10                    movl        (%eax),%edx
+   +38  00002544  c744241800000000        movl        $0x00000000,0x18(%esp)
+   +46  0000254c  c744241400000000        movl        $0x00000000,0x14(%esp)
+   +54  00002554  c744241000000000        movl        $0x00000000,0x10(%esp)
+   +62  0000255c  8b430c                  movl        0x0c(%ebx),%eax               (id)mainWindow
+   +65  0000255f  8944240c                movl        %eax,0x0c(%esp)
+   +69  00002563  8b4314                  movl        0x14(%ebx),%eax               (id)registeredSheet <- the good message
+   +72  00002566  eb29                    jmp         0x00002591
+   
+What we got here is a classical (and very weak) test for available registration or not. If the function isRegistered
+returns true, then the good message will be shown, else the bad one will be shown since the program isn't registered.
+
+Since that je is conditional we have two possible solutions for a crack:
+1) Nop the conditional jump: JE to NOP
+2) Patch the isRegistered routine to return always true
+
+The first alternative is very easy to test with gdb, even before patching anything.
+Load the crackme into gdb and set a breakpoint at 0x0000253b  (the address of the JE).
+
+Sample session:
+$ gdb Challenge\ #1 
+GNU gdb 6.3.50-20050815 (Apple version gdb-1344) (Mon Dec 28 15:21:35 UTC 2009)
+Copyright 2004 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "x86_64-apple-darwin"...Reading symbols for shared libraries ......b .. done
+
+gdb$ b *0x0000253b
+Breakpoint 1 at 0x253b
+gdb$ r
+Reading symbols for shared libraries .+++++++.................................................................................. done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+
+Breakpoint 1, 0x0000253b in -[Level1 applicationDidFinishLaunching:] ()
+--------------------------------------------------------------------------[regs]
+  EAX: 0x00000000  EBX: 0x00415CC0  ECX: 0x00000001  EDX: 0x00000000  o d I t s Z a P c 
+  ESI: 0xBFFFEA50  EDI: 0x00000002  EBP: 0xBFFFEA18  ESP: 0xBFFFE9F0  EIP: 0x0000253B
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F  Jump is taken (z=1)
+--------------------------------------------------------------------------[code]
+0x253b:  74 2b                         je     0x2568
+0x253d:  a1 0c 50 00 00                mov    eax,ds:0x500c
+0x2542:  8b 10                         mov    edx,DWORD PTR [eax]
+0x2544:  c7 44 24 18 00 00 00 00       mov    DWORD PTR [esp+0x18],0x0
+0x254c:  c7 44 24 14 00 00 00 00       mov    DWORD PTR [esp+0x14],0x0
+0x2554:  c7 44 24 10 00 00 00 00       mov    DWORD PTR [esp+0x10],0x0
+0x255c:  8b 43 0c                      mov    eax,DWORD PTR [ebx+0xc]
+0x255f:  89 44 24 0c                   mov    DWORD PTR [esp+0xc],eax
+--------------------------------------------------------------------------------
+gdb$ 
+
+Gdb stopped before executing the JE and we can observe that the jump will be taken, so the not
+registered message will appear. To test our theory, you should use the "cfz" command.
+This will change the zero flag, from 1 to 0 (you know it's the zero flag because you have that
+information in the Jump is taken msg, z=1).
+
+Change the flag and then issue the command "context". This will redraw gdb output without advancing
+any instruction.
+
+gdb$ cfz
+gdb$ context
+--------------------------------------------------------------------------[regs]
+  EAX: 0x00000000  EBX: 0x00416FC0  ECX: 0x00000001  EDX: 0x00000000  o d I t s z a P c 
+  ESI: 0xBFFFEA50  EDI: 0x00000002  EBP: 0xBFFFEA18  ESP: 0xBFFFE9F0  EIP: 0x0000253B
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F  Jump is NOT taken (z!=1)
+--------------------------------------------------------------------------[code]
+0x253b:  74 2b                         je     0x2568
+0x253d:  a1 0c 50 00 00                mov    eax,ds:0x500c
+0x2542:  8b 10                         mov    edx,DWORD PTR [eax]
+0x2544:  c7 44 24 18 00 00 00 00       mov    DWORD PTR [esp+0x18],0x0
+0x254c:  c7 44 24 14 00 00 00 00       mov    DWORD PTR [esp+0x14],0x0
+0x2554:  c7 44 24 10 00 00 00 00       mov    DWORD PTR [esp+0x10],0x0
+0x255c:  8b 43 0c                      mov    eax,DWORD PTR [ebx+0xc]
+0x255f:  89 44 24 0c                   mov    DWORD PTR [esp+0xc],eax
+--------------------------------------------------------------------------------
+
+You can observe that the message changed and the jump will not be executed.
+Issue the continue command and check the program... Voila, you have just bypassed the protection!
+
+So the first method is to change the JE into a NOP. A nop mean no-operation, a harmless instruction
+will be executed. Since the instruction JE is two bytes (74 2b), and NOPs are a single byte (90),
+you will need two use two nops to replace 74 2b. More on patching later...
+
+The alternative, is to modify the isRegistered method.
+The disassembly is:
+-(BOOL)[Level1 isRegistered]
+    +0  00002a88  55                      pushl       %ebp
+    +1  00002a89  89e5                    movl        %esp,%ebp
+    +3  00002a8b  8b4508                  movl        0x08(%ebp),%eax
+    +6  00002a8e  0fb64020                movzbl      0x20(%eax),%eax
+   +10  00002a92  c9                      leave
+   +11  00002a93  c3                      ret
+
+You can modify this method to always return 1 (true).
+The most common way to do this is to replace the beginning of this method with the following code:
+xor eax, eax
+inc eax
+ret
+
+Using the assemble command from gdb:
+gdb$ assemble
+Instructions will be written to stdout.
+Type instructions, one per line. Do not forget to use NASM assembler syntax!
+End with a line saying just "end".
+>xor eax,eax
+>inc eax
+>ret
+>end
+00000000  31C0              xor eax,eax
+00000002  40                inc eax
+00000003  C3                ret
+
+Those are the bytes you need to use and replace in the original method, 31 C0 40 c3.
+You need to patch 4 bytes, starting at 0x00002a88. The two first instructions total 3 bytes, so you
+will "eat" space in the third instruction, which is 3 bytes long. Since you will patch a single byte
+in the third instruction, the rest of the code there will be most probably invalid. This isn't a 
+problem because we will not execute any code after the ret (return). To make this cleaner you could
+NOP the two remaining bytes from the old third instruction.
+
+A variation of patching isRegistered, is to patch the code before the method is called.
+The original code is:
+    +7  00002525  8b5d08                  movl        0x08(%ebp),%ebx
+   +10  00002528  a110400000              movl        0x00004010,%eax               isRegistered
+   +15  0000252d  891c24                  movl        %ebx,(%esp)
+   +18  00002530  89442404                movl        %eax,0x04(%esp)
+   +22  00002534  e8252b0000              calll       0x0000505e                    -[(%esp,1) isRegistered] <- call the routine
+   +27  00002539  84c0                    testb       %al,%al
+   +29  0000253b  742b                    je          0x00002568 <- if it's not registered, then it will show the bad message
+
+For example, you could replace the code at address 0x00002534 by:
+xor eax, eax
+inc eax
+
+and NOP the remaining bytes.
+So there are different ways to do this, based on available space, conditions and your lazyness ;-)
+
+As with the first alternative, you can try this in gdb before patching. Breakpoint the isRegistered method
+at 0x00002a88 and run the crackme.
+
+$ gdb Challenge\ #1 
+GNU gdb 6.3.50-20050815 (Apple version gdb-1344) (Mon Dec 28 15:21:35 UTC 2009)
+Copyright 2004 Free Software Foundation, Inc.
+GDB is free software, covered by the GNU General Public License, and you are
+welcome to change it and/or distribute copies of it under certain conditions.
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "x86_64-apple-darwin"...Reading symbols for shared libraries ........ done
+
+gdb$ b *0x00002a88
+Breakpoint 1 at 0x2a88
+gdb$ r
+Reading symbols for shared libraries .+++++++.................................................................................. done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+Reading symbols for shared libraries . done
+
+Breakpoint 1, 0x00002a88 in -[Level1 isRegistered] ()
+--------------------------------------------------------------------------[regs]
+  EAX: 0x00002A88  EBX: 0x00418820  ECX: 0x00000001  EDX: 0x00000000  o d I t s Z a P c 
+  ESI: 0xBFFFEA50  EDI: 0x00000002  EBP: 0xBFFFEA18  ESP: 0xBFFFE9EC  EIP: 0x00002A88
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F
+--------------------------------------------------------------------------[code]
+0x2a88:  55                            push   ebp
+0x2a89:  89 e5                         mov    ebp,esp
+0x2a8b:  8b 45 08                      mov    eax,DWORD PTR [ebp+0x8]
+0x2a8e:  0f b6 40 20                   movzx  eax,BYTE PTR [eax+0x20]
+0x2a92:  c9                            leave  
+0x2a93:  c3                            ret    
+0x2a94:  55                            push   ebp
+0x2a95:  b8 01 00 00 00                mov    eax,0x1
+--------------------------------------------------------------------------------
+gdb$ set *0x2a88 = 0xc340c031
+gdb$ context
+--------------------------------------------------------------------------[regs]
+  EAX: 0x00002A88  EBX: 0x00418820  ECX: 0x00000001  EDX: 0x00000000  o d I t s Z a P c 
+  ESI: 0xBFFFEA50  EDI: 0x00000002  EBP: 0xBFFFEA18  ESP: 0xBFFFE9EC  EIP: 0x00002A88
+  CS: 0017  DS: 001F  ES: 001F  FS: 0000  GS: 0037  SS: 001F
+--------------------------------------------------------------------------[code]
+0x2a88:  31 c0                         xor    eax,eax
+0x2a8a:  40                            inc    eax
+0x2a8b:  c3                            ret    
+0x2a8c:  45                            inc    ebp
+0x2a8d:  08 0f                         or     BYTE PTR [edi],cl
+0x2a8f:  b6 40                         mov    dh,0x40
+0x2a91:  20 c9                         and    cl,cl
+0x2a93:  c3                            ret    
+--------------------------------------------------------------------------------
+gdb$ c
+
+Voila, it's cracked.
+The set command will modify memory. As explained, we don't need to patch the remaining bytes, and
+since our new bytes are 4 bytes (32bits) we don't need cast any values in the set command.
+For example, if you just wanted to patch a single byte you would use the following:
+set *(char *) address = 0x90
+
+3.1 - Patching the binary
+-------------------------
+
+To patch the binary, you will need to open it in an hex editor. Then you will need an offset. The offset is where the program is located.
+Mac OS X has what is called fat binaries (or universal binaries), meaning that a PPC and x86 version will be present in the same file.
+This obliges an extra step because you need to calculate the offset for the x86 part (this tutorial is for x86!).
+I'm going to show you how to patch with the first alternative, the NOP.
+
+To verify if the binary is fat or universal, we can use otool command.
+$ otool -f Challenge\ #1 
+Fat headers
+fat_magic 0xcafebabe
+nfat_arch 2
+architecture 0
+    cputype 7
+    cpusubtype 3
+    capabilities 0x0
+    offset 4096 <- HERE !
+    size 22548
+    align 2^12 (4096)
+architecture 1
+    cputype 18
+    cpusubtype 0
+    capabilities 0x0
+    offset 28672
+    size 18560
+    align 2^12 (4096)
+
+nfat_arch is equal to 2, meaning there are two architectures present in this binary. We are interested
+in cputype 7, which is Intel x86. Cputype 18 is PPC.
+You can see that x86 binary starts at offset 4096 (this is in decimal!), 0x1000 in hexadecimal.
+To calculate the correct offset for address 0x0000253b (the one we want to patch), we just need to 
+add 0x1000 + 0x0000253b = 0x353B. So the formula is offset + offset_to_patch, where offset is the one
+reported in otool.
+Load the binary into an hex editor and go to offset 0x353B. If you use 0xED if you an input box at upper
+right corner. Just insert 353B there and press return.
+You should land at the correct offset. Check if the bytes match those we want to patch (742b). It should.
+Now you just need to replace 74 by 90 and 2B by 90 and save.
+Start Challenge #1 and voila, no more bad message! Our work is done...
+
+A word of caution while trying to calculate the offset. The previous paragraph about the formula to calculate
+correct offset is true if Intel x86 binary is the first one inside the fat binary. If PPC is first, 
+then the formula is (offset - 0x1000 + offset_to_patch). You need to subtract 0x1000 because that's the header
+size of PPC part. Not that hard to remember (I'm coding a small utility to do this math :) ).
+
+The easiest way to calculate the offset is to use the utility I created, offset.pl.
+You can download the latest version at http://reverse.put.as/wp-content/uploads/2011/02/offset1.3.pl_.gz
+or Ghalen's C version at http://reverse.put.as/wp-content/uploads/2009/06/ocalc.c
+
+To practice your patching skills, try to patch the isRegistered method :-)
+
+3.2 - Fishing a valid serial number
+-----------------------------------
+
+The routine that verifies if the serial is valid can be easily found in the disassembly listing.
+It's called -(BOOL)[Level1 validateSerial:forName:]. The name is very suggestive (another common mistake in
+OS X developers).
+
+You should study that routine to understand what's happening there. A basic scheme for a serial verification
+routine is:
+1) Verify if user serial number length is ok. If ok continue, else give an error.
+2) Compute the good serial number.
+3) Compare the user serial number with the good serial number.
+
+All these elements are present here. I will just dump my notes on what the code is doing. Keep in mind
+that valid serial number should be different in your case.
+
+Serial should be 8 chars in length, as this piece of code shows:
+   +29  00002abb  83f808                  cmpl        $0x08,%eax
+
+A quick look at the whole method and we find the piece of code we are interested in:
+  +369  00002c0f  891c24                  movl        %ebx,(%esp) <- our serial first 4 chars
+  +372  00002c12  89c6                    movl        %eax,%esi <- esi with our serial next 4 chars
+  +374  00002c14  8b45d8                  movl        0xd8(%ebp),%eax <- eax with 5680 (first part of good serial)
+  +377  00002c17  89442408                movl        %eax,0x08(%esp)
+  +381  00002c1b  a108400000              movl        0x00004008,%eax               isEqual:
+  +386  00002c20  89442404                movl        %eax,0x04(%esp)
+  +390  00002c24  e835240000              calll       0x0000505e                    -[(%esp,1) isEqual:]
+  +395  00002c29  84c0                    testb       %al,%al <- are they equal ?
+  +397  00002c2b  7421                    je          0x00002c4e <- jump if our serial part is different from good serial part
+  +399  00002c2d  8b45dc                  movl        0xdc(%ebp),%eax <- eax holding second part of good serial
+  +402  00002c30  893424                  movl        %esi,(%esp) <- our second serial part
+  +405  00002c33  89442408                movl        %eax,0x08(%esp)
+  +409  00002c37  a108400000              movl        0x00004008,%eax               isEqual:
+  +414  00002c3c  89442404                movl        %eax,0x04(%esp)
+  +418  00002c40  e819240000              calll       0x0000505e                    -[(%esp,1) isEqual:]
+  +423  00002c45  ba01000000              movl        $0x00000001,%edx <- used to return that serial is GOOD
+  +428  00002c4a  84c0                    testb       %al,%al <- test if 2nd serial parts match
+  +430  00002c4c  7502                    jne         0x00002c50  <- jump if they match
+  +432  00002c4e  31d2                    xorl        %edx,%edx <- this will clean edx, thus telling that serial is BAD
+  +434  00002c50  83c43c                  addl        $0x3c,%esp
+  +437  00002c53  89d0                    movl        %edx,%eax <- if serial is ok, edx is equal to 1, so eax will return 1 meaning an ok serial!
+ (...)
+
+Instead of a comparison with a single serial number, two comparisons are made, the first half and then the second half.
+You just need to fish the two good pieces and you get your valid serial number.
+
+3.3 - Keygen
+------------
+
+To create a keygen, you will need to study the previous routine and understand how it's created.
+The algorithm is very simple and it contains a bug. The source for my dirty keygen follows.
+The code is commented so it should be easy for you to follow.
+
+----- CUT HERE ---------
+/* Keygen for Macserialjunkies Challenge '09
+
+   The serial algorithm has a bug because the format string has no zero padding.
+   For example with the following name "zeparreco" the valid serial is 39940081
+   but since there is lack of padding, the algorithm generates 399481.
+   Serial length must be equal to 8 so this username is impossible to keygen due to this small bug.
+
+   This code sucks, it was made in a hurry :/ It works but it's damn ugly hehehehe
+
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(int argc, char *argv[])
+{
+ char name[256], *pname;
+
+ printf("Macserialjunkies.com challenge #1 Keygen v0.1\n\n");
+ printf("Insert name:\n");
+ fflush(stdout);
+ fgets(name, 256, stdin);
+ if ((pname = strchr(name, '\n')) != NULL)
+ {
+  *pname = '\0';
+ }
+
+/* serial number is composed by 8 digits
+   there are two algorithms, one for the first 4 digits and the other for the remaining
+*/
+
+// first block of four digits
+ int i=0;
+ int digit,multiplier=4;
+// mov    eax,0x68db8bad
+ int wtf = 0x68db8bad;
+ int accumulator=0;
+ int ecx=0;
+ unsigned long long temp1;
+ int temp2, temp3, temp4;
+ int x=0;
+ int stringsize = strlen(name);
+ int firstblock,secondblock;
+
+for (x=0; x < stringsize ; x++)
+{
+// movsx  eax,BYTE PTR [edi+ebx]
+ digit = name[i];
+// inc    ebx
+ i++;
+// imul   eax,esi
+ digit = digit * multiplier;
+// add    esi,0x4
+ multiplier += 4;
+// shl    edx,0x4
+// sub    edx,eax
+ digit = (digit << 4 ) - digit;
+// lea    ecx,[edx+ecx+0x29a]
+ ecx = digit + ecx + 0x29a;
+// imul   ecx
+ temp1 = (unsigned long long) ecx * wtf; 
+// this grabs the ecx value since long multiplication the result goes to EDX:EAX
+ temp1 = temp1 >> 32;
+// mov    eax,ecx
+// sar    eax,0x1f
+ temp2 = ecx >> 0x1f;
+// sar    edx,0xc
+ temp1 = temp1 >> 0xc;
+// sub    edx,eax
+ temp3 = temp1 - temp2;
+// imul   edx,edx,0x2710
+ temp4 = temp1 * 0x2710;
+// sub    eax,edx
+ ecx = ecx - temp4; 
+
+}
+// the last ecx is the good first serial part
+firstblock = ecx;
+
+// second block
+ i=0;
+ multiplier = 4;
+ int edx;
+ x=0;
+ ecx=0;
+ int firstsar, secondsar;
+
+for (x=0; x < stringsize ; x++)
+{
+//movsx  eax,BYTE PTR [edi+ebx]
+ digit = name[i];
+// inc    ebx
+ i++;
+// imul   eax,esi
+ digit = digit * multiplier;
+// add    esi,0x8
+ multiplier += 8;
+// lea    edx,[eax+eax*4]
+ edx = digit + digit * 4;
+// lea    edx,[eax+edx*2+0x2d]
+ edx = digit + edx*2 + 0x2d;
+
+ ecx = ecx + edx;
+
+ temp1 = (unsigned long long) ecx * wtf;
+ edx = temp1 >> 32;
+
+ firstsar = ecx >> 0x1f;
+ secondsar = edx >> 0xc;
+ 
+ temp2 = secondsar - firstsar;
+
+ edx = secondsar * 0x2710;
+
+ temp3 = ecx - edx;
+}
+// 2nd part of good serial
+ secondblock = temp3;
+
+// convert to decimal and print
+printf("Serial number is: %04d%04d\n", firstblock, secondblock);
+printf("Byeeeeeee!\n");
+}
+----- CUT HERE ---------
+
+4 - Conclusion
+--------------
+
+And here we are, at the end of this long tutorial. I hope you have enjoyed it and learnt something with it.
+Now you should have a basic framework and ability to work with the basic tools. To advance further, you need
+to find more targets and practice with them. Breaking protections is a good way to learn reverse
+engineering, because you always have a goal, breaking the protection. You will need to think and
+research so you can advance, that is the really fun part about reversing. 
+Sometimes you will not be able to advance a target, maybe you should postpone it and get back at it 
+later when your skills improved. This was my contribution to introduce you to this world, the next step depends on you.
+
+If you have any suggestions, doubts or found any error, please feel free to leave a comment at my 
+blog http://reverse.put.as or drop an email at reverse AT put.as
+
+Have fun!
+fG!
