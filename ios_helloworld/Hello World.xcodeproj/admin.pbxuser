@@ -1,0 +1,113 @@
+// !$*UTF8*$!
+{
+	1D3623240D0F684500981E51 /* Hello_WorldAppDelegate.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {630, 668}}";
+			sepNavSelRange = "{172, 0}";
+			sepNavVisRange = "{0, 392}";
+			sepNavWindowFrame = "{{111, 35}, {689, 796}}";
+		};
+	};
+	1D3623250D0F684500981E51 /* Hello_WorldAppDelegate.m */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {986, 686}}";
+			sepNavSelRange = "{647, 341}";
+			sepNavVisRange = "{0, 1126}";
+			sepNavWindowFrame = "{{174, 75}, {1045, 803}}";
+		};
+	};
+	1D6058900D05DD3D006BFB54 /* Hello World */ = {
+		activeExec = 0;
+		executables = (
+			84CE6A870D81EFDF00EA2B95 /* Hello World */,
+		);
+	};
+	289E37740D53116900ACCF19 /* MyView.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {470, 347}}";
+			sepNavSelRange = "{186, 0}";
+			sepNavVisRange = "{0, 195}";
+			sepNavWindowFrame = "{{88, 377}, {529, 475}}";
+		};
+	};
+	289E37750D53116900ACCF19 /* MyView.m */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {630, 668}}";
+			sepNavSelRange = "{182, 0}";
+			sepNavVisRange = "{0, 183}";
+			sepNavWindowFrame = "{{65, 77}, {689, 796}}";
+		};
+	};
+	29B97313FDCFA39411CA2CEA /* Project object */ = {
+		activeArchitecture = i386;
+		activeBuildConfigurationName = Debug;
+		activeExecutable = 84CE6A870D81EFDF00EA2B95 /* Hello World */;
+		activeTarget = 1D6058900D05DD3D006BFB54 /* Hello World */;
+		codeSenseManager = 84CE6A920D81EFE700EA2B95 /* Code sense */;
+		executables = (
+			84CE6A870D81EFDF00EA2B95 /* Hello World */,
+		);
+		perUserDictionary = {
+			PBXPerProjectTemplateStateSaveDate = 226619359;
+			PBXWorkspaceStateSaveDate = 226619359;
+		};
+		perUserProjectItems = {
+			84CE6A990D81F20600EA2B95 /* PBXBookmark */ = 84CE6A990D81F20600EA2B95 /* PBXBookmark */;
+			84CE6AAA0D81F46200EA2B95 /* PBXTextBookmark */ = 84CE6AAA0D81F46200EA2B95 /* PBXTextBookmark */;
+		};
+		sourceControlManager = 84CE6A910D81EFE700EA2B95 /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	84CE6A870D81EFDF00EA2B95 /* Hello World */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = "Hello World";
+		savedGlobals = {
+		};
+		sourceDirectories = (
+		);
+	};
+	84CE6A910D81EFE700EA2B95 /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+		};
+	};
+	84CE6A920D81EFE700EA2B95 /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+	84CE6A990D81F20600EA2B95 /* PBXBookmark */ = {
+		isa = PBXBookmark;
+		fRef = 289E37750D53116900ACCF19 /* MyView.m */;
+	};
+	84CE6AAA0D81F46200EA2B95 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 289E37750D53116900ACCF19 /* MyView.m */;
+		name = "MyView.m: 14";
+		rLen = 0;
+		rLoc = 182;
+		rType = 0;
+		vrLen = 183;
+		vrLoc = 0;
+	};
+}
